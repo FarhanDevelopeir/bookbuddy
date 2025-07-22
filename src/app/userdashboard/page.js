@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase/client'
 import OverviewPage from '@/components/Dashboard/OverviewPage';
 import MyBook from '@/components/Dashboard/MyBook';
 import AuthRequiredCard from '@/components/Dashboard/AuthRequiredCard';
-import { Package,Search } from 'lucide-react';
+import { Package, Search } from 'lucide-react';
 import LoadingScreen from '@/components/Dashboard/LoadingScreen';
 import Sidebar from '@/components/Dashboard/Sidebar';
 import AddBook from '@/components/Dashboard/AddBook';
@@ -16,8 +16,8 @@ import { useAuth } from "@/components/AuthProvider";
 const Dashboard = () => {
 
     const router = useRouter();
-    const { user, loading } = useAuth();
-    
+    const [user, setUser] = useState(null);
+
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [userDropdownOpen, setUserDropdownOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('overview');
@@ -31,21 +31,54 @@ const Dashboard = () => {
     const [loadingData, setLoadingData] = useState(true);
     const [uploadingImages, setUploadingImages] = useState(false);
 
+    console.log("user in dashboard", user);
+
     const [bookForm, setBookForm] = useState({
         title: '',
         price: '',
         description: '',
         condition: 'New',
         category: 'First Year',
-        status:'Available',
+        status: 'Available',
         images: [],
         thumbnailIndex: 0,
     });
 
     useEffect(() => {
+        const getUser = async () => {
+            const {
+                data: { session },
+            } = await supabase.auth.getSession()
+
+
+            const currentUser = session?.user ?? null
+            setUser(currentUser)
+            if (currentUser?.user_metadata?.picture) {
+                setAvatarUrl(currentUser.user_metadata.picture)
+            }
+        }
+
+        getUser();
+
+        const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+            const currentUser = session?.user ?? null
+            setUser(currentUser)
+
+            if (currentUser?.user_metadata?.picture) {
+                setAvatarUrl(currentUser.user_metadata.picture)
+            }
+        })
+        return () => {
+            listener.subscription.unsubscribe()
+        }
+    }, [])
+
+    useEffect(() => {
         if (user?.user_metadata?.picture) {
             setAvatarUrl(user.user_metadata.picture);
         }
+        console.log("user comes", user);
+
     }, [user]);
 
     const fetchUserData = async () => {
@@ -88,10 +121,20 @@ const Dashboard = () => {
 
 
     useEffect(() => {
-        if (user?.id) {
+        if (user?.id && dashboardStats === null) {
             fetchUserData();
         }
     }, [user]);
+
+    useEffect(() => {
+        setTimeout(() => {
+            if (!user) {
+                return (
+                    <AuthRequiredCard />
+                );
+            }
+        }, 1000);
+    }, []);
 
     useEffect(() => {
         if (!searchQuery.trim()) {
@@ -131,36 +174,36 @@ const Dashboard = () => {
         }));
     };
     const removeImage = async (index) => {
-    const imageToRemove = bookForm.images[index];
-    
-    if (imageToRemove.publicId) {
-        try {
-            const response = await fetch(`/api/upload?publicId=${imageToRemove.publicId}`, {
-                method: 'DELETE'
-            });
-            if (!response.ok) {
-                console.error('Failed to delete image from Cloudinary');
+        const imageToRemove = bookForm.images[index];
+
+        if (imageToRemove.publicId) {
+            try {
+                const response = await fetch(`/api/upload?publicId=${imageToRemove.publicId}`, {
+                    method: 'DELETE'
+                });
+                if (!response.ok) {
+                    console.error('Failed to delete image from Cloudinary');
+                }
+            } catch (error) {
+                console.error('Error deleting image from Cloudinary:', error);
             }
-        } catch (error) {
-            console.error('Error deleting image from Cloudinary:', error);
         }
-    }
 
-    const newImages = bookForm.images.filter((_, i) => i !== index);
-    
-    let newThumbnailIndex = bookForm.thumbnailIndex;
-    if (index === bookForm.thumbnailIndex) {
-        newThumbnailIndex = 0;
-    } else if (index < bookForm.thumbnailIndex) {
-        newThumbnailIndex = bookForm.thumbnailIndex - 1;
-    }
+        const newImages = bookForm.images.filter((_, i) => i !== index);
 
-    setBookForm(prev => ({
-        ...prev,
-        images: newImages,
-        thumbnailIndex: Math.max(0, Math.min(newThumbnailIndex, newImages.length - 1))
-    }));
-};
+        let newThumbnailIndex = bookForm.thumbnailIndex;
+        if (index === bookForm.thumbnailIndex) {
+            newThumbnailIndex = 0;
+        } else if (index < bookForm.thumbnailIndex) {
+            newThumbnailIndex = bookForm.thumbnailIndex - 1;
+        }
+
+        setBookForm(prev => ({
+            ...prev,
+            images: newImages,
+            thumbnailIndex: Math.max(0, Math.min(newThumbnailIndex, newImages.length - 1))
+        }));
+    };
 
     const handleSubmitBook = async () => {
         if (!user?.id) {
@@ -204,14 +247,14 @@ const Dashboard = () => {
                     description: '',
                     condition: 'New',
                     category: 'First Year',
-                    status:'Available',
+                    status: 'Available',
                     images: [],
                     thumbnailIndex: 0,
                 })
 
                 await fetchUserData();
                 toast("Book added successfully!")
-                
+
                 setActiveTab('books');
             }
             else {
@@ -234,19 +277,19 @@ const Dashboard = () => {
             if (bookForm.description) updateData.description = bookForm.description;
             if (bookForm.category) updateData.category = bookForm.category;
             if (bookForm.condition) updateData.condition = bookForm.condition;
-            if(bookForm.status) updateData.status = bookForm.status;
+            if (bookForm.status) updateData.status = bookForm.status;
 
-             if (bookForm.images && bookForm.images.length > 0) {
-            const imageURLs = bookForm.images.map(image => {
-                if (typeof image === 'string') return image;
-                if (image.url) return image.url;
-                return '';
-            }).filter(url => url !== '');
-            
-            updateData.pictures = imageURLs;
-            updateData.thumbnailIndex = bookForm.thumbnailIndex;
-        }
-        
+            if (bookForm.images && bookForm.images.length > 0) {
+                const imageURLs = bookForm.images.map(image => {
+                    if (typeof image === 'string') return image;
+                    if (image.url) return image.url;
+                    return '';
+                }).filter(url => url !== '');
+
+                updateData.pictures = imageURLs;
+                updateData.thumbnailIndex = bookForm.thumbnailIndex;
+            }
+
             const response = await fetch(`/api/books?bookId=${selectedBook._id}`, {
                 method: 'PUT',
                 headers: {
@@ -271,7 +314,7 @@ const Dashboard = () => {
 
                 await fetchUserData();
                 toast("Book updated successfully.")
-                
+
             }
             else {
                 const errorData = await response.json();
@@ -306,15 +349,15 @@ const Dashboard = () => {
     const handleEditBook = (book) => {
         setSelectedBook(book);
 
-          const existingImages = book.pictures ? book.pictures.map(url => {
-        const publicId = url.includes('cloudinary.com') ? 
-            url.split('/').pop().split('.')[0] : null;
-        
-        return {
-            url: url,
-            publicId: publicId 
-        };
-    }) : [];
+        const existingImages = book.pictures ? book.pictures.map(url => {
+            const publicId = url.includes('cloudinary.com') ?
+                url.split('/').pop().split('.')[0] : null;
+
+            return {
+                url: url,
+                publicId: publicId
+            };
+        }) : [];
 
         setBookForm(prev => ({
             ...prev,
@@ -331,57 +374,57 @@ const Dashboard = () => {
     };
 
     const handleUnifiedImageUpload = async (event) => {
-    const files = Array.from(event.target.files);
+        const files = Array.from(event.target.files);
 
-    if (!files.length) {
-        console.log('No files selected');
-        return;
-    }
-    
-    if (bookForm.images.length + files.length > 3) {
-        alert('Maximum 3 images allowed');
-        return;
-    }
-
-    setUploadingImages(true);
-    const uploadedImages = [];
-
-    try {
-        for (const file of files) {
-            
-            if (!file.type.startsWith('image/')) {
-                throw new Error(`${file.name} is not an image file`);
-            }
-            
-            const formData = new FormData();
-            formData.append('file', file);
-
-            const response = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData,
-            });
-
-            if (!response.ok) {
-                throw new Error(`Upload failed for ${file.name}: ${response.status}`);
-            }
-
-            const result = await response.json();
-            uploadedImages.push({
-                file: file,
-                url: result.url,
-                publicId: result.public_id
-            });
+        if (!files.length) {
+            console.log('No files selected');
+            return;
         }
 
-        handleFormChange('images', [...bookForm.images, ...uploadedImages]);
-        
-    } catch (error) {
-        console.error('Upload error:', error);
-        alert(`Error uploading images: ${error.message}`);
-    } finally {
-        setUploadingImages(false);
-    }
-};
+        if (bookForm.images.length + files.length > 3) {
+            alert('Maximum 3 images allowed');
+            return;
+        }
+
+        setUploadingImages(true);
+        const uploadedImages = [];
+
+        try {
+            for (const file of files) {
+
+                if (!file.type.startsWith('image/')) {
+                    throw new Error(`${file.name} is not an image file`);
+                }
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Upload failed for ${file.name}: ${response.status}`);
+                }
+
+                const result = await response.json();
+                uploadedImages.push({
+                    file: file,
+                    url: result.url,
+                    publicId: result.public_id
+                });
+            }
+
+            handleFormChange('images', [...bookForm.images, ...uploadedImages]);
+
+        } catch (error) {
+            console.error('Upload error:', error);
+            alert(`Error uploading images: ${error.message}`);
+        } finally {
+            setUploadingImages(false);
+        }
+    };
 
 
     const handleSignOut = async () => {
@@ -396,19 +439,8 @@ const Dashboard = () => {
     const handlemainpage = () => {
         router.push('/')
     }
-  
 
-    if (loading) {
-        return (
-            <LoadingScreen />
-        );
-    }
 
-    if (!user) {
-        return (
-            <AuthRequiredCard />
-        );
-    }
 
     const renderContent = () => {
         if (loadingData) {
@@ -449,32 +481,32 @@ const Dashboard = () => {
                     />)
             case 'addbook':
                 return (
-                     <AddBook 
-            bookForm={bookForm}
-            handleFormChange={handleFormChange}
-            handleFileUpload={handleUnifiedImageUpload }
-            setThumbnail={setThumbnail}
-            removeImage={removeImage}
-            handleSubmitBook={handleSubmitBook}
-            uploadingImages={uploadingImages}
-        />
+                    <AddBook
+                        bookForm={bookForm}
+                        handleFormChange={handleFormChange}
+                        handleFileUpload={handleUnifiedImageUpload}
+                        setThumbnail={setThumbnail}
+                        removeImage={removeImage}
+                        handleSubmitBook={handleSubmitBook}
+                        uploadingImages={uploadingImages}
+                    />
                 );
             case 'books':
                 return (
-                   <MyBook 
-                    filteredBooks={filteredBooks}
-                    setActiveTab={setActiveTab}
-                    handleEditBook={handleEditBook}
-                    handleDeleteBook={handleDeleteBook}
-                    editDialogOpen={editDialogOpen}
-                    setEditDialogOpen={setEditDialogOpen}
-                    bookForm={bookForm}
-                    updatehandle={updatehandle}
-                    handleFormChange={handleFormChange}
-                     handleFileUpload={handleFileUpload}
-                    setThumbnail={setThumbnail}
-                    removeImage={removeImage}
-                   />
+                    <MyBook
+                        filteredBooks={filteredBooks}
+                        setActiveTab={setActiveTab}
+                        handleEditBook={handleEditBook}
+                        handleDeleteBook={handleDeleteBook}
+                        editDialogOpen={editDialogOpen}
+                        setEditDialogOpen={setEditDialogOpen}
+                        bookForm={bookForm}
+                        updatehandle={updatehandle}
+                        handleFormChange={handleFormChange}
+                        handleFileUpload={handleFileUpload}
+                        setThumbnail={setThumbnail}
+                        removeImage={removeImage}
+                    />
                 );
             default:
                 return (
@@ -494,7 +526,7 @@ const Dashboard = () => {
     return (
         <div className="flex h-screen bg-gray-50">
 
-            <Sidebar 
+            <Sidebar
                 sidebarOpen={sidebarOpen}
                 setSidebarOpen={setSidebarOpen}
                 activeTab={activeTab}

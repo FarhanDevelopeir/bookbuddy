@@ -10,6 +10,9 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+ 
+
+
   useEffect(() => {
     const getUser = async () => {
       const { data, error } = await supabase.auth.getUser();
@@ -20,13 +23,13 @@ export function AuthProvider({ children }) {
     getUser();
 
     const {
-  data: { subscription },
-} = supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-    setUser(session?.user || null);
-    setLoading(false);
-  }
-});
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+        setUser(session?.user || null);
+        setLoading(false);
+      }
+    });
 
     return () => {
       subscription.unsubscribe();

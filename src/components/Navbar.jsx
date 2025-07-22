@@ -12,6 +12,9 @@ export default function Navbar() {
   const [user, setUser] = useState(null);
   const router = useRouter();
 
+  console.log("user in navbar", user);
+  
+
   useEffect(() => {
     const getUser = async () => {
       const {
@@ -56,7 +59,7 @@ export default function Navbar() {
   }
   
   const handledashboard = ()=>{
-    router.push('userdashboard');
+    router.replace('/userdashboard')
   }
   return (
     
