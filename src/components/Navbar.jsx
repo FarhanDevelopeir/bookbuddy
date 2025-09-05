@@ -30,10 +30,37 @@ export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(null);
+  const [avatarUrl, setAvatarUrl] = useState(null)
+  const [mongoUserData, setMongoUserData] = useState(null)
 
-  // Add this useEffect to your Navbar component
+  const fetchMongoUserData = async (userId) => {
+    try {
+      const response = await fetch(`/api/users/${userId}`);
+      if (response.ok) {
+        const userData = await response.json();
+        setMongoUserData(userData);
+        return userData;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching MongoDB user data:', error);
+      return null;
+    }
+  }
+
+  const getAvatarSource = (supabaseUser, mongoUser) => {
+    if (mongoUser?.dp) {
+      return mongoUser.dp;
+    }
+    
+    if (supabaseUser?.user_metadata?.picture) {
+      return supabaseUser.user_metadata.picture;
+    }
+    
+    return null;
+  }
+
   useEffect(() => {
-    // Add data-lenis-prevent to all interactive elements in navbar
     const addLenisPrevent = () => {
       const navbarElements = document.querySelectorAll(
         'header button, header a, [class*="mobile-menu"] button, [class*="mobile-menu"] a'
@@ -44,15 +71,11 @@ export default function Navbar() {
       });
     };
 
-    // Run initially and after mobile menu opens/closes
     addLenisPrevent();
-
-    // Re-run when mobile menu state changes
     const timer = setTimeout(addLenisPrevent, 100);
 
     return () => {
       clearTimeout(timer);
-      // Clean up if needed
       const elements = document.querySelectorAll('[data-lenis-prevent]');
       elements.forEach(element => {
         element.removeAttribute('data-lenis-prevent');
@@ -60,16 +83,13 @@ export default function Navbar() {
     };
   }, [mobileMenuOpen]);
 
-  // Also add this to handle scroll events with Lenis
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
     };
 
-    // Use both regular scroll and Lenis-compatible scroll
     window.addEventListener('scroll', handleScroll);
 
-    // Also listen to Lenis scroll events if available
     if (window.lenis) {
       window.lenis.on('scroll', handleScroll);
     }
@@ -93,6 +113,7 @@ export default function Navbar() {
       console.error('Error fetching user role:', error);
     }
   }
+
   useEffect(() => {
     const getUser = async () => {
       const {
@@ -102,29 +123,32 @@ export default function Navbar() {
       const currentUser = session?.user ?? null
       setUser(currentUser)
 
-      if (currentUser?.user_metadata?.picture) {
-        setAvatarUrl(currentUser.user_metadata.picture)
-      }
-
       if (currentUser) {
+        const mongoUser = await fetchMongoUserData(currentUser.id);
+        
+        const avatarSource = getAvatarSource(currentUser, mongoUser);
+        setAvatarUrl(avatarSource);
+
         fetchUserRole(currentUser.id);
       }
-
     }
     getUser();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const currentUser = session?.user ?? null
       setUser(currentUser)
 
-      if (currentUser?.user_metadata?.picture) {
-        setAvatarUrl(currentUser.user_metadata.picture)
-      }
       if (currentUser) {
+        const mongoUser = await fetchMongoUserData(currentUser.id);
+        
+        const avatarSource = getAvatarSource(currentUser, mongoUser);
+        setAvatarUrl(avatarSource);
+
         fetchUserRole(currentUser.id);
-      }
-      else {
+      } else {
         setUserRole(null);
+        setMongoUserData(null);
+        setAvatarUrl(null);
       }
     })
     return () => {
@@ -135,7 +159,6 @@ export default function Navbar() {
   const closeMenu = () => setMenuOpen(false)
   const toggleMobileMenu = () => setMobileMenuOpen(prev => !prev)
   const closeMobileMenu = () => setMobileMenuOpen(false)
-  const [avatarUrl, setAvatarUrl] = useState(null)
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -149,11 +172,9 @@ export default function Navbar() {
   }
 
   const handledashboard = () => {
-
     if (userRole === 'admin') {
       router.push('Admindashboard');
-    }
-    else {
+    } else {
       router.push('userdashboard');
     }
     closeMobileMenu()
@@ -175,7 +196,6 @@ export default function Navbar() {
       document.body.style.width = '';
     };
   }, [mobileMenuOpen]);
-
 
   const handleHowItWorks = () => {
     closeMobileMenu();
@@ -200,7 +220,6 @@ export default function Navbar() {
     router.push(path)
     closeMobileMenu()
   }
-
 
   return (
     <>
@@ -264,16 +283,19 @@ export default function Navbar() {
                   className="text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-4 py-2 font-medium transition-all duration-200"
                 >Dashboard</Button>
                 <div className="relative">
-
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button className="flex items-center p-1 md:mr-2 rounded-full hover:bg-gray-100 transition-colors">
                         <div className="w-8 h-8 md:w-8 md:h-8 rounded-full overflow-hidden">
-                          <img
-                            className="w-full h-full object-cover"
-                            src={getImageSrc(avatarUrl)}
-                            alt="User Profile"
-                          />
+                          {avatarUrl ? (
+                            <img
+                              className="w-full h-full object-cover"
+                              src={getImageSrc(avatarUrl)}
+                              alt="User Profile"
+                            />
+                          ) : (
+                            <User className="w-full h-full p-2 bg-gray-100 text-gray-400" />
+                          )}
                         </div>
                       </button>
                     </DropdownMenuTrigger>
@@ -281,7 +303,7 @@ export default function Navbar() {
                     <DropdownMenuContent align="end" className="w-48 mt-2">
                       <DropdownMenuLabel className="font-normal">
                         <div className="flex flex-col space-y-1">
-                          <p className="text-sm font-medium leading-none">{user?.user_metadata?.full_name || 'User'}</p>
+                          <p className="text-sm font-medium leading-none">{mongoUserData?.name || user?.user_metadata?.full_name || 'User'}</p>
                           <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
                         </div>
                       </DropdownMenuLabel>
@@ -346,15 +368,19 @@ export default function Navbar() {
             <div className="p-6 border-b border-gray-200 bg-gray-50">
               <div className="flex items-center space-x-3 mb-4">
                 <div className="w-10 h-10 rounded-full overflow-hidden shrink-0">
-                  <img
-                    className="w-full h-full object-cover"
-                    src={getImageSrc(avatarUrl)}
-                    alt="User Profile"
-                  />
+                  {avatarUrl ? (
+                    <img
+                      className="w-full h-full object-cover"
+                      src={getImageSrc(avatarUrl)}
+                      alt="User Profile"
+                    />
+                  ) : (
+                    <User className="w-full h-full p-2 bg-gray-100 text-gray-400" />
+                  )}
                 </div>
                 <div className="min-w-0">
                   <p className="font-medium text-gray-900 break-words">
-                    {user?.user_metadata?.full_name || 'User'}
+                    {mongoUserData?.name || user?.user_metadata?.full_name || 'User'}
                   </p>
                   <p className="text-sm text-gray-500 break-words">
                     {user?.email}

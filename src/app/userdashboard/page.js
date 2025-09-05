@@ -41,8 +41,62 @@ const Dashboard = () => {
     const [dashboardStats, setDashboardStats] = useState(null);
     const [loadingData, setLoadingData] = useState(true);
     const [uploadingImages, setUploadingImages] = useState(false);
-
+    const [userRole, setUserRole] = useState(null);
     const [warnings, setWarnings] = useState([]);
+    const [mongoUserData, setMongoUserData] = useState(null)
+
+
+    useEffect(() => {
+        const getUser = async () => {
+            const {
+                data: { session },
+            } = await supabase.auth.getSession()
+
+            const currentUser = session?.user ?? null
+            setUser(currentUser)
+
+            if (currentUser) {
+                const mongoUser = await fetchMongoUserData(currentUser.id);
+                const avatarSource = getAvatarSource(currentUser, mongoUser);
+                setAvatarUrl(avatarSource);
+                fetchUserRole(currentUser.id);
+            }
+        }
+        getUser();
+
+        const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+            const currentUser = session?.user ?? null
+            setUser(currentUser)
+
+            if (currentUser) {
+                const mongoUser = await fetchMongoUserData(currentUser.id);
+
+                const avatarSource = getAvatarSource(currentUser, mongoUser);
+                setAvatarUrl(avatarSource);
+
+                fetchUserRole(currentUser.id);
+            } else {
+                setUserRole(null);
+                setMongoUserData(null);
+                setAvatarUrl(null);
+            }
+        })
+        return () => {
+            listener.subscription.unsubscribe()
+        }
+    }, [])
+
+    const fetchUserRole = async (userId) => {
+        try {
+            const response = await fetch(`/api/users/${userId}`);
+            if (response.ok) {
+                const userData = await response.json();
+                setUserRole(userData.role);
+            }
+        } catch (error) {
+            console.error('Error fetching user role:', error);
+        }
+    }
 
     useEffect(() => {
         if (!user?.id) return;
@@ -61,6 +115,35 @@ const Dashboard = () => {
 
         fetchWarnings();
     }, [user]);
+
+    const fetchMongoUserData = async (userId) => {
+        try {
+            const response = await fetch(`/api/users/${userId}`);
+            if (response.ok) {
+                const userData = await response.json();
+                setMongoUserData(userData);
+                return userData;
+            }
+            return null;
+        } catch (error) {
+            console.error('Error fetching MongoDB user data:', error);
+            return null;
+        }
+    }
+
+    const getAvatarSource = (supabaseUser, mongoUser) => {
+        if (mongoUser?.dp) {
+            return mongoUser.dp;
+        }
+
+        if (supabaseUser?.user_metadata?.picture) {
+            return supabaseUser.user_metadata.picture;
+        }
+
+        return null;
+    }
+
+
 
     const [bookForm, setBookForm] = useState({
         title: '',
@@ -103,46 +186,10 @@ const Dashboard = () => {
             }
         };
 
-        handleResize(); // Initial check
+        handleResize();
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
-
-    useEffect(() => {
-        const getUser = async () => {
-            const {
-                data: { session },
-            } = await supabase.auth.getSession()
-
-
-            const currentUser = session?.user ?? null
-            setUser(currentUser)
-            if (currentUser?.user_metadata?.picture) {
-                setAvatarUrl(currentUser.user_metadata.picture)
-            }
-        }
-
-        getUser();
-
-        const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-            const currentUser = session?.user ?? null
-            setUser(currentUser)
-
-            if (currentUser?.user_metadata?.picture) {
-                setAvatarUrl(currentUser.user_metadata.picture)
-            }
-        })
-        return () => {
-            listener.subscription.unsubscribe()
-        }
-    }, [])
-
-    useEffect(() => {
-        if (user?.user_metadata?.picture) {
-            setAvatarUrl(user.user_metadata.picture);
-        }
-
-    }, [user]);
 
     const fetchUserData = async () => {
         if (!user?.id) return;
@@ -420,63 +467,7 @@ const Dashboard = () => {
         setEditDialogOpen(true);
     };
 
-    // const handleUnifiedImageUpload = async (event) => {
-    //     const files = Array.from(event.target.files);
 
-    //     if (!files.length) {
-    //         console.log('No files selected');
-    //         return;
-    //     }
-
-    //     if (bookForm.images.length + files.length > 3) {
-    //         alert('Maximum 3 images allowed');
-    //         return;
-    //     }
-
-    //     setUploadingImages(true);
-    //     const uploadedImages = [];
-
-    //     try {
-    //         for (const file of files) {
-
-    //             if (!file.type.startsWith('image/')) {
-    //                 throw new Error(`${file.name} is not an image file`);
-    //             }
-
-    //             const formData = new FormData();
-    //             formData.append('file', file);
-
-    //             const response = await fetch('/api/upload', {
-    //                 method: 'POST',
-    //                 body: formData,
-    //             });
-
-    //             if (!response.ok) {
-    //                 throw new Error(`Upload failed for ${file.name}: ${response.status}`);
-    //             }
-
-    //             const result = await response.json();
-    //             uploadedImages.push({
-    //                 file: file,
-    //                 url: result.url,
-    //                 publicId: result.public_id
-    //             });
-    //         }
-
-    //         handleFormChange('images', [...bookForm.images, ...uploadedImages]);
-
-    //     } catch (error) {
-    //         console.error('Upload error:', error);
-    //         alert(`Error uploading images: ${error.message}`);
-    //     } finally {
-    //         setUploadingImages(false);
-    //     }
-    // };
-
-    // Modified function to handle both regular uploads and cropped files
-
-
-    // Add this in your parent component to debug
     useEffect(() => {
         console.log('bookForm.images changed:', bookForm.images);
         bookForm.images.forEach((img, index) => {
@@ -486,16 +477,13 @@ const Dashboard = () => {
             }
         });
     }, [bookForm.images]);
-    // Modified function to handle both regular uploads and cropped files
+
     const handleUnifiedImageUpload = async (eventOrFile, indexToReplace = null) => {
         let files = [];
 
-        // Handle different input types
         if (eventOrFile instanceof File) {
-            // Single file (from cropping)
             files = [eventOrFile];
         } else if (eventOrFile && eventOrFile.target && eventOrFile.target.files) {
-            // Event object (from file input)
             files = Array.from(eventOrFile.target.files);
         } else {
             console.log('Invalid input to handleUnifiedImageUpload');
@@ -504,12 +492,6 @@ const Dashboard = () => {
 
         if (!files.length) {
             console.log('No files to upload');
-            return;
-        }
-
-        // Check image limit (only for new images, not replacements)
-        if (indexToReplace === null && bookForm.images.length + files.length > 3) {
-            alert('Maximum 3 images allowed');
             return;
         }
 
@@ -542,14 +524,11 @@ const Dashboard = () => {
                 });
             }
 
-            // Update images based on whether we're replacing or adding
             let newImages;
             if (indexToReplace !== null && indexToReplace < bookForm.images.length) {
-                // Replace existing image at specific index
                 newImages = [...bookForm.images];
-                newImages[indexToReplace] = uploadedImages[0]; // Replace with first (and likely only) uploaded image
+                newImages[indexToReplace] = uploadedImages[0];
             } else {
-                // Add new images
                 newImages = [...bookForm.images, ...uploadedImages];
             }
 
@@ -814,7 +793,7 @@ const Dashboard = () => {
                                     <DropdownMenuContent align="end" className="w-48 mt-2">
                                         <DropdownMenuLabel className="font-normal">
                                             <div className="flex flex-col space-y-1">
-                                                <p className="text-sm font-medium leading-none">{user?.user_metadata?.full_name || 'User'}</p>
+                                                <p className="text-sm font-medium leading-none">{mongoUserData?.name || user?.user_metadata?.full_name || 'User'}</p>
                                                 <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
                                             </div>
                                         </DropdownMenuLabel>
