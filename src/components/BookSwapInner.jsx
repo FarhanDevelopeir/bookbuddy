@@ -128,7 +128,7 @@ const BookSwapInner = () => {
     let filtered = books;
 
     filtered = filtered.filter(
-      (book) => book.status !== "sold" && !book.isHidden
+      (book) => book.status !== "Sold" && !book.isHidden
     );
 
     if (selectedYear !== 'All') {
@@ -480,7 +480,7 @@ const conditionDisplayText = selectedCondition === 'All' ? 'Condition' : selecte
                   {book.author && (
                     <p className="text-gray-600 mb-2">by {book.author}</p>
                   )}
-                  <p className="text-2xl font-bold text-gray-900 mb-2">${book.price}</p>
+                  <p className="text-2xl font-bold text-gray-900 mb-2">Rs. {book.price}</p>
 
                   <div className="flex items-center justify-between mb-4">
                     <Badge className={getConditionBadgeStyle(book.condition)}>

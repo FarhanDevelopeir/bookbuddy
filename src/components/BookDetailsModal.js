@@ -212,7 +212,7 @@ const BookDetailsModal = ({ isOpen, onClose, book }) => {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <p className="text-sm text-gray-500 mb-1">Price:</p>
-                                    <p className="text-xl sm:text-2xl font-bold text-green-600">${book.price}</p>
+                                    <p className="text-xl sm:text-2xl font-bold text-green-600">{book.price}</p>
                                 </div>
                                 <div>
                                     <p className="text-sm text-gray-500 mb-1">Condition:</p>

@@ -91,7 +91,7 @@ const BookSwap = () => {
     useEffect(() => {
         const fetchStatsAndBooks = async () => {
             try {
-               
+
                 const booksRes = await fetch('/api/books');
                 const booksData = await booksRes.json();
 
@@ -100,7 +100,6 @@ const BookSwap = () => {
 
                 const availableBooks = Array.isArray(booksData) ? booksData.filter(book => book.status !== 'Sold' && !book.isHidden) : [];
 
-                
                 setAllBooks(availableBooks);
                 
                 setStats({
