@@ -157,7 +157,7 @@ const BookSwapInner = () => {
 
     if (searchQuery.trim()) {
       const beforeCount = filtered.length;
-      const query = searchQuery.toLowerCase();
+      const query = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(book =>
         book.title?.toLowerCase().includes(query) ||
         book.author?.toLowerCase().includes(query) ||
