@@ -527,9 +527,9 @@ const AddBook = ({
                                   variant="destructive"
                                   size="icon"
                                   onClick={() => removeImage(index)}
-                                  className="absolute -top-2 -right-2 sm:-top-3 sm:-right-3 rounded-full p-1.5 sm:p-2 hover:bg-red-600 shadow-lg"
+                                  className="absolute -top-0 -right-0 sm:-top-0 sm:-right-0 rounded-full p-1.5 w-6 h-6 hover:bg-red-600 shadow-lg"
                                 >
-                                  <X className="h-3 w-3 sm:h-4 sm:w-4" />
+                                  <X className="h-1 w-1 sm:h-1 sm:w-1" />
                                 </Button>
                               </div>
                             ) : (
@@ -629,12 +629,6 @@ const AddBook = ({
                 onClick={() => setAspect(4 / 3)}
               >
                 4:3 (Landscape)
-              </Button>
-              <Button
-                variant={aspect === undefined ? "default" : "outline"}
-                onClick={() => setAspect(undefined)}
-              >
-                Free Form
               </Button>
             </div>
 

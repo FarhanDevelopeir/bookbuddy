@@ -1092,7 +1092,7 @@ const NewProfilePage = () => {
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-800 text-gray-900  dark:text-gray-100">
       <Navbar />
-      <header className="relative h-40 mt-8 md:h-50 md:max-w-4xl max-w-92 m-auto  bg-gray-100 dark:bg-gray-800">
+      <header className="relative h-40 mt-8 md:h-50 md:max-w-4xl max-w-83 m-auto  bg-gray-100 dark:bg-gray-800">
         <div className="h-full w-full bg-black/20">
           {userInfo.coverdp && (
             <img
@@ -1208,7 +1208,7 @@ const NewProfilePage = () => {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed bg-gray-50 dark:bg-gray-800 rounded-lg p-4 break-all">
                     {userInfo.about || 'No bio provided yet. Share something about yourself!'}
                   </p>
                 )}
@@ -1306,6 +1306,7 @@ const NewProfilePage = () => {
                         onChange={handleInputChange}
                         placeholder="your.email@example.com"
                         className="w-full"
+                        disabled
                       />
                       {validationErrors.email && (
                         <p className="text-red-500 text-sm">{validationErrors.email}</p>
@@ -1320,7 +1321,7 @@ const NewProfilePage = () => {
                       </div>
                       <div>
                         <p className="text-sm text-gray-500 dark:text-gray-400">Location</p>
-                        <p className="font-medium text-gray-900 dark:text-white">{userInfo.address || 'Not specified'}</p>
+                        <p className="font-medium text-gray-900 dark:text-white break-all">{userInfo.address || 'Not specified'}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
@@ -1329,7 +1330,7 @@ const NewProfilePage = () => {
                       </div>
                       <div>
                         <p className="text-sm text-gray-500 dark:text-gray-400">Email</p>
-                        <p className="font-medium text-gray-900 dark:text-white">{userInfo.email}</p>
+                        <p className="font-medium text-gray-900 dark:text-white break-all">{userInfo.email}</p>
                       </div>
                     </div>
                   </div>
