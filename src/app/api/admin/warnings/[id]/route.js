@@ -1,4 +1,4 @@
-// src/app/api/admin/warnings/[id]/route.js
+
 import dbConnect from '@/lib/db';
 import Warning from '@/models/Warning';
 import { NextResponse } from 'next/server';

@@ -1,35 +1,43 @@
 import mongoose from 'mongoose';
 
 const warningSchema = new mongoose.Schema({
-  userId: { 
-    type: String, 
-    ref: 'User', 
-    required: true 
+  userId: {
+    type: String,
+    ref: 'User',
+    required: true
   },
-  adminId: { 
-    type: String, 
-    ref: 'User', 
-    required: true 
+  response: { // Add this field for user responses
+    type: String,
+    default: null
   },
-  message: { 
-    type: String, 
-    required: true 
+  respondedAt: { // Add timestamp for when user responded
+    type: Date,
+    default: null
   },
-  is_read :{type: Boolean, default:false },
-  severity: { 
-    type: String, 
-    enum: ['low', 'medium', 'high'], 
-    default: 'medium' 
+  adminId: {
+    type: String,
+    ref: 'User',
+    required: true
   },
-   bookId: {
+  message: {
+    type: String,
+    required: true
+  },
+  is_read: { type: Boolean, default: false },
+  severity: {
+    type: String,
+    enum: ['low', 'medium', 'high'],
+    default: 'medium'
+  },
+  bookId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Book',
-    default: null, 
+    default: null,
   },
-  status: { 
-    type: String, 
-    enum: ['active', 'resolved'], 
-    default: 'active' 
+  status: {
+    type: String,
+    enum: ['active', 'resolved'],
+    default: 'active'
   },
   isResolved: {
     type: Boolean,

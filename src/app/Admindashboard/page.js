@@ -378,27 +378,56 @@ const AdminDashboard = () => {
     }
   };
 
+  // const fetchAllNotifications = async () => {
+  //   try {
+  //     const response = await fetch('/api/admin/notifications');
+  //     if (!response.ok) throw new Error('Failed to fetch notifications');
+  //     const data = await response.json();
+
+  //     const filteredContacts = data.contacts.filter(contact => contact.subject !== 'report');
+
+  //     const notifications = [
+  //       ...data.reports.map(item => ({ ...item, type: 'report', icon: Flag })),
+  //       ...data.users.map(item => ({ ...item, type: 'user', icon: Users })),
+  //       ...data.books.map(item => ({ ...item, type: 'book', icon: BookOpen })),
+  //       ...filteredContacts.map(item => ({ ...item, type: 'contact', icon: Mail }))
+  //     ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  //     setAllNotifications(notifications);
+  //     setUnreadCount(notifications.filter(n => !n.is_read).length);
+  //   } catch (error) {
+  //     console.error('Error fetching notifications:', error);
+  //   }
+  // };
+
   const fetchAllNotifications = async () => {
-    try {
-      const response = await fetch('/api/admin/notifications');
-      if (!response.ok) throw new Error('Failed to fetch notifications');
-      const data = await response.json();
+  try {
+    const response = await fetch('/api/admin/notifications');
+    if (!response.ok) throw new Error('Failed to fetch notifications');
+    const data = await response.json();
 
-      const filteredContacts = data.contacts.filter(contact => contact.subject !== 'report');
+    const filteredContacts = data.contacts.filter(contact => contact.subject !== 'report');
 
-      const notifications = [
-        ...data.reports.map(item => ({ ...item, type: 'report', icon: Flag })),
-        ...data.users.map(item => ({ ...item, type: 'user', icon: Users })),
-        ...data.books.map(item => ({ ...item, type: 'book', icon: BookOpen })),
-        ...filteredContacts.map(item => ({ ...item, type: 'contact', icon: Mail }))
-      ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const notifications = [
+      ...data.reports.map(item => ({ ...item, type: 'report', icon: Flag })),
+      ...data.users.map(item => ({ ...item, type: 'user', icon: Users })),
+      ...data.books.map(item => ({ ...item, type: 'book', icon: BookOpen })),
+      ...filteredContacts.map(item => ({ ...item, type: 'contact', icon: Mail })),
+      // Add warning responses as a separate type with different icon and styling
+      ...(data.warningResponses || []).map(item => ({ 
+        ...item, 
+        type: 'warning_response', 
+        icon: MessageCircle, // Different icon for responses
+        is_warning_response: true // Flag to identify warning responses
+      }))
+    ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-      setAllNotifications(notifications);
-      setUnreadCount(notifications.filter(n => !n.is_read).length);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-    }
-  };
+    setAllNotifications(notifications);
+    setUnreadCount(notifications.filter(n => !n.is_read).length);
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+  }
+};
 
   const filteredUsers = useMemo(() => {
     return users.filter(user =>
@@ -756,6 +785,39 @@ const AdminDashboard = () => {
       console.error('Error marking notification as read:', error);
     }
   };
+
+//   const markNotificationAsRead = async (notificationId, type) => {
+//   try {
+//     // For warning responses, we need to use a different endpoint
+//     if (type === 'warning_response') {
+//       await fetch(`/api/admin/warnings/${notificationId}/mark-read`, {
+//         method: 'POST',
+//         headers: { 'Content-Type': 'application/json' },
+//       });
+//     } else {
+//       await fetch(`/api/admin/notifications/${type}/${notificationId}`, {
+//         method: 'PUT',
+//         headers: { 'Content-Type': 'application/json' },
+//         body: JSON.stringify({ is_read: true })
+//       });
+//     }
+
+//     setAllNotifications(prev =>
+//       prev.map(n =>
+//         n._id === notificationId 
+//           ? { 
+//               ...n, 
+//               is_read: true,
+//               ...(type === 'warning_response' && { admin_read: true }) 
+//             } 
+//           : n
+//       )
+//     );
+//     setUnreadCount(prev => Math.max(0, prev - 1));
+//   } catch (error) {
+//     console.error('Error marking notification as read:', error);
+//   }
+// };
 
   const markAllAsRead = async () => {
     try {
