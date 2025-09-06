@@ -66,6 +66,13 @@ const Header = ({
         iconColor: 'text-amber-600',
         accentColor: 'bg-amber-500'
       },
+      warning_response: {
+        bg: isRead ? 'bg-blue-50/50' : 'bg-blue-50',
+        border: isRead ? 'border-blue-100' : 'border-blue-200',
+        iconBg: isRead ? 'bg-blue-100' : 'bg-blue-100',
+        iconColor: 'text-blue-600',
+        accentColor: 'bg-blue-500'
+      },
       user: {
         bg: isRead ? 'bg-blue-50/50' : 'bg-blue-50',
         border: isRead ? 'border-blue-100' : 'border-blue-200',
@@ -96,10 +103,37 @@ const Header = ({
       report: 'New Report Submitted',
       warning: 'Warning Issued',
       user: 'New User Registration',
+      warning_response: 'User Response to Warning',
       book: 'Book Listed for Sale',
       contact: 'Contact Message Received'
     };
     return titles[notification.type] || 'New Notification';
+  };
+
+  const getNotificationMessage = (notification) => {
+    if (notification.type === 'warning_response') {
+      return (
+        <>
+          <strong>User:</strong> {notification.userId?.name || 'Unknown user'} responded to a warning
+          <br />
+          <strong>Response:</strong> {notification.response}
+          {notification.bookId && (
+            <>
+              <br />
+              <strong>Book:</strong> {notification.bookId.title}
+            </>
+          )}
+        </>
+      );
+    }
+    // You can add more custom messages for other notification types here if needed
+    return notification.message || notification.details ||
+      (notification.type === 'user' ? `Welcome ${notification.name || notification.email}!` :
+        notification.type === 'book' ? `"${notification.title}" has been listed.` :
+          notification.type === 'contact' ? `New message from ${notification.name || 'user'}.` :
+            notification.type === 'report' ? 'A new report was submitted.' :
+              notification.type === 'warning' ? 'A warning was issued.' :
+                'New activity detected.');
   };
 
   return (
@@ -251,19 +285,22 @@ const Header = ({
                                 </div>
 
                                 <p className={`text-xs sm:text-sm leading-relaxed mb-0 sm:mb-0 ${notification.is_read ? 'text-gray-600' : 'text-gray-700'}`}>
-                                  {notification.message || notification.details ||
+                                  {/* {notification.message || notification.details ||
                                     (notification.type === 'user' ? `Welcome ${notification.name || notification.email}!` :
                                       notification.type === 'book' ? `"${notification.title}" has been listed.` :
                                         notification.type === 'contact' ? `New message from ${notification.name || 'user'}.` :
                                           notification.type === 'report' ? 'A new report was submitted.' :
                                             notification.type === 'warning' ? 'A warning was issued.' :
-                                              'New activity detected.')}
+                                              'New activity detected.')} */}
+                                  {getNotificationMessage(notification)}
                                 </p>
 
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-1 text-[11px] sm:text-xs text-gray-500">
                                     <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                                    <span className="font-medium">{formatDate(notification.createdAt)}</span>
+                                    <span className="font-medium">
+                                      {formatDate(notification.type === 'warning_response' ? notification.respondedAt : notification.createdAt)}
+                                    </span>
                                   </div>
 
                                   {!notification.is_read && (
@@ -274,7 +311,13 @@ const Header = ({
                                         className="h-5 sm:h-6 px-1.5 sm:px-2 text-[10px] sm:text-xs text-gray-500 hover:text-gray-700"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          markNotificationAsRead(notification._id, notification.type);
+                                          if (notification.type === 'warning_response') {
+                                            // For warning responses, you might want different behavior
+                                            markNotificationAsRead(notification._id, 'warning_response');
+                                            // Optionally open warning details modal
+                                          } else {
+                                            markNotificationAsRead(notification._id, notification.type);
+                                          }
                                         }}
                                       >
                                         Mark read

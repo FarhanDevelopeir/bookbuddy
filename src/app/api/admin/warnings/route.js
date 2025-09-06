@@ -57,25 +57,62 @@ export async function POST(request) {
   }
 }
 
+// export async function GET(request) {
+//   try {
+//     await dbConnect();
+
+//     const { searchParams } = new URL(request.url);
+//     const userId = searchParams.get("userId");
+//     const includeResolved = searchParams.get("includeResolved") === "true";
+
+//     if (!userId) {
+//       return Response.json({ error: "userId is required" }, { status: 400 });
+//     }
+
+//     const query = { userId };
+//     if (!includeResolved) {
+//       query.status = "active";
+//       query.isResolved = false;
+//     }
+
+//     const warnings = await Warning.find(query)
+//     .populate('bookId', 'title price year department')
+//     .select('+response +respondedAt')
+//     .sort({ createdAt: -1 });
+
+//     return Response.json(warnings);
+//   } catch (err) {
+//     console.error("Error fetching warnings:", err);
+//     return Response.json({ error: "Internal server error" }, { status: 500 });
+//   }
+// }
+
 export async function GET(request) {
   try {
     await dbConnect();
 
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
-    const includeResolved = searchParams.get("includeResolved") === "true";
+    // Remove the includeResolved parameter since we're fetching everything
+    // const includeResolved = searchParams.get("includeResolved") === "true";
 
     if (!userId) {
       return Response.json({ error: "userId is required" }, { status: 400 });
     }
 
+    // Only filter by userId - remove all status filtering
     const query = { userId };
-    if (!includeResolved) {
-      query.status = "active";
-      query.isResolved = false;
-    }
+    // Remove these lines:
+    // if (!includeResolved) {
+    //   query.status = "active";
+    //   query.isResolved = false;
+    // }
 
-    const warnings = await Warning.find(query).sort({ createdAt: -1 });
+    // Fetch ALL warnings for this user, regardless of status
+    const warnings = await Warning.find(query)
+      .populate('bookId', 'title price year department')
+      .select('+response +respondedAt')
+      .sort({ createdAt: -1 });
 
     return Response.json(warnings);
   } catch (err) {

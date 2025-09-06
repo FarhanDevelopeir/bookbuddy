@@ -7,8 +7,11 @@ import MyBook from '@/components/Dashboard/MyBook';
 import { Package, Search, Menu, X, UserCircle } from 'lucide-react';
 import Sidebar from '@/components/Dashboard/Sidebar';
 import AddBook from '@/components/Dashboard/AddBook';
+import UserWarningsContent from '@/components/Dashboard/UserWarningsContent';
 import { useRouter } from 'next/navigation';
 import { toast } from "sonner";
+import UserWarningDialog from '@/components/Dashboard/UserWarningDialog';
+import ContactAdminDialog from '@/components/Dashboard/ContactAdminDialog';
 import {
     User, BookOpen,
     LogOut,
@@ -44,6 +47,20 @@ const Dashboard = () => {
     const [userRole, setUserRole] = useState(null);
     const [warnings, setWarnings] = useState([]);
     const [mongoUserData, setMongoUserData] = useState(null)
+
+    const [warningsStatusFilter, setWarningsStatusFilter] = useState('all');
+    const [warningsSearchTerm, setWarningsSearchTerm] = useState('');
+    const [showWarningsFilters, setShowWarningsFilters] = useState(false);
+    const [filteredWarnings, setFilteredWarnings] = useState([]);
+
+    const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
+    const [selectedWarningForContact, setSelectedWarningForContact] = useState(null);
+
+
+    const handleContactAdmin = (warning) => {
+        setSelectedWarningForContact(warning);
+        setIsContactDialogOpen(true);
+    };
 
 
     useEffect(() => {
@@ -98,23 +115,68 @@ const Dashboard = () => {
         }
     }
 
+    const handleSendAdminMessage = async (warning, message) => {
+        try {
+            const response = await fetch(`/api/admin/warnings/${warning._id}/response`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    response: message
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to send response');
+            }
+
+            const result = await response.json();
+
+            // Update local state
+            setWarnings(prev => prev.map(w =>
+                w._id === warning._id ? result.warning : w
+            ));
+
+            toast.success("Your response has been submitted!");
+            return result;
+        } catch (error) {
+            toast.error(error.message || "Failed to submit response. Please try again.");
+            throw error;
+        }
+    };
+
     useEffect(() => {
         if (!user?.id) return;
 
         const fetchWarnings = async () => {
             try {
-                const res = await fetch(`/api/admin/warnings?userId=${user.id}`);
+                const queryParams = new URLSearchParams({
+                    userId: user.id,
+                    includeResolved: warningsStatusFilter === "all"
+                }).toString();
+
+                const res = await fetch(`/api/admin/warnings?${queryParams}`);
                 if (!res.ok) throw new Error("Failed to fetch warnings");
+
                 const data = await res.json();
-                setWarnings(data);
+
+                const normalized = Array.isArray(data) ? data : data ? [data] : [];
+
+                setWarnings(normalized);
+                setFilteredWarnings(normalized);
+                console.log("Fetched warnings:", normalized);
             } catch (err) {
                 console.error("Warning fetch error:", err);
                 setWarnings([]);
+                setFilteredWarnings([]);
             }
         };
 
+
         fetchWarnings();
-    }, [user]);
+    }, [user, warningsStatusFilter, warningsSearchTerm]);
 
     const fetchMongoUserData = async (userId) => {
         try {
@@ -142,8 +204,6 @@ const Dashboard = () => {
 
         return null;
     }
-
-
 
     const [bookForm, setBookForm] = useState({
         title: '',
@@ -542,8 +602,13 @@ const Dashboard = () => {
         }
     };
 
+    const [isWarningDialogOpen, setIsWarningDialogOpen] = useState(false);
+    const [selectedWarning, setSelectedWarning] = useState(null);
 
-
+    const handleViewWarningDetails = (warning) => {
+        setSelectedWarning(warning);
+        setIsWarningDialogOpen(true);
+    };
 
     const handleSignOut = async () => {
         await supabase.auth.signOut()
@@ -559,6 +624,7 @@ const Dashboard = () => {
     }
 
 
+    const activeWarningsCount = warnings.filter(w => w.status === 'active').length;
 
     const renderContent = () => {
         if (loadingData) {
@@ -627,6 +693,21 @@ const Dashboard = () => {
                         removeImage={removeImage}
                     />
                 );
+            case 'warnings':
+                return (
+                    <UserWarningsContent
+                        warnings={filteredWarnings}
+                        statusFilter={warningsStatusFilter}
+                        setStatusFilter={setWarningsStatusFilter}
+                        searchTerm={warningsSearchTerm}
+                        setSearchTerm={setWarningsSearchTerm}
+                        showFilters={showWarningsFilters}
+                        setShowFilters={setShowWarningsFilters}
+                        filteredWarnings={filteredWarnings}
+                        handleViewDetails={handleViewWarningDetails}
+                        handleContactAdmin={handleContactAdmin}
+                    />
+                );
             default:
                 return (
                     <div className="flex items-center justify-center h-96">
@@ -644,13 +725,13 @@ const Dashboard = () => {
 
     return (
         <div>
-            {warnings.length > 0 && (
-                <div className="relative bg-gradient-to-r from-red-600 via-red-500 to-red-600 text-white py-2 shadow-md  overflow-hidden">
+            {warnings.length > 0 && warnings.some(w => w.status === "active") && (
+                <div className="relative bg-gradient-to-r from-red-600 via-red-500 to-red-600 text-white py-2 shadow-md overflow-hidden">
                     <div className="animate-marquee whitespace-nowrap flex items-center">
-                        {warnings.map((w, i) => (
+                        {warnings.filter(w => w.status === "active").map((w, i) => (
                             <span
-                                key={i}
-                                className="mx-8 flex items-center space-x-2 font-medium text-sm hover:opacity-90"
+                                key={w.id || i}
+                                className="mx-8 inline-flex items-center space-x-2 font-medium text-xs sm:text-sm hover:opacity-90"
                             >
                                 <span className="text-lg">
                                     {w.severity === "high" && "🚨"}
@@ -658,7 +739,7 @@ const Dashboard = () => {
                                     {w.severity === "low" && "ℹ️"}
                                 </span>
                                 <span>
-                                    {w.message}
+                                    {w.message || "No details available"}
                                     <span className="ml-2 text-xs opacity-80">
                                         ({w.severity.toUpperCase()})
                                     </span>
@@ -666,11 +747,13 @@ const Dashboard = () => {
                             </span>
                         ))}
                     </div>
+
                     {/* gradient fade effect on edges */}
                     <div className="absolute top-0 left-0 w-16 h-full bg-gradient-to-r from-red-600 to-transparent" />
                     <div className="absolute top-0 right-0 w-16 h-full bg-gradient-to-l from-red-600 to-transparent" />
                 </div>
             )}
+
             <div className="flex h-screen bg-gray-50">
                 {/* Desktop Sidebar */}
                 <div className="hidden md:block">
@@ -680,6 +763,7 @@ const Dashboard = () => {
                         activeTab={activeTab}
                         setActiveTab={handleTabChange}
                         handlemainpage={handlemainpage}
+                        warningsCount={activeWarningsCount}
                     />
                 </div>
 
@@ -754,6 +838,7 @@ const Dashboard = () => {
                                 <h1 className="text-xl md:text-2xl font-bold text-gray-900 capitalize">
                                     {activeTab === 'addbook' ? 'Add Book' :
                                         activeTab === 'books' ? 'My Books' :
+                                        activeTab === 'warnings' ? 'Warnings' :
                                             activeTab === 'orders' ? 'Orders' : 'Overview'}
                                 </h1>
                             </div>
@@ -834,6 +919,21 @@ const Dashboard = () => {
                         {renderContent()}
                     </main>
                 </div>
+
+                <UserWarningDialog
+                    isDialogOpen={isWarningDialogOpen}
+                    setIsDialogOpen={setIsWarningDialogOpen}
+                    selectedWarning={selectedWarning}
+                    handleContactAdmin={handleContactAdmin}
+                />
+
+                <ContactAdminDialog
+                    isOpen={isContactDialogOpen}
+                    onClose={() => setIsContactDialogOpen(false)}
+                    warning={selectedWarningForContact}
+                    onSubmit={handleSendAdminMessage}
+                />
+
             </div>
         </div>
     );

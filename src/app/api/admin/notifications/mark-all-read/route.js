@@ -5,6 +5,7 @@ import Book from '@/models/books';
 import Contact from '@/models/Contact';
 import User from '@/models/User';
 import Report from '@/models/Report';
+import Warning from '@/models/Warning';
 
 export async function PUT() {
   try {
@@ -15,7 +16,8 @@ export async function PUT() {
       Report.updateMany({}, { is_read: true }),
       User.updateMany({}, { is_read: true }),
       Book.updateMany({}, { is_read: true }),
-      Contact.updateMany({}, { is_read: true })
+      Contact.updateMany({}, { is_read: true }),
+      Warning.updateMany({}, { is_read: true }),
     ]);
     
     // Calculate total updated documents
@@ -29,6 +31,7 @@ export async function PUT() {
         users: results[1].modifiedCount,
         books: results[2].modifiedCount,
         contacts: results[3].modifiedCount,
+        warningResponses: results[4].modifiedCount
       }
     });
     
