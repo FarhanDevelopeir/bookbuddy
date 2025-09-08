@@ -245,7 +245,7 @@ const BookDetailsModal = ({ isOpen, onClose, book }) => {
                                 </div>
                                 <div>
                                     <p className="text-sm text-gray-500 mb-1">Seller:</p>
-                                    <p className="font-medium text-gray-900">{book.seller.name}</p>
+                                    <p className="font-medium text-gray-900">{book.seller?.name}</p>
                                 </div>
                             </div>
 
