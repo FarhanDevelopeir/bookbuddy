@@ -502,8 +502,6 @@ const BookSwapInner = () => {
                       }`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      router.push(`/chatboard?user=${book?.sellerId}`);
-                      console.log("/chatboard?user=${book.sellerId}");
                     }}
                   >
                     {book.status === 'Sold'

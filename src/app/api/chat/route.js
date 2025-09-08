@@ -64,7 +64,7 @@ import dbConnect from '@/lib/db';
 import Conversation from '@/models/Conversation';
 import Message from '@/models/Message';
 
-// Use Ably Realtime client
+// Create Ably client
 const ably = new Ably.Realtime({ key: process.env.ABLY_API_KEY });
 
 export default async function handler(req, res) {
@@ -98,7 +98,7 @@ export default async function handler(req, res) {
       const populatedMessage = await Message.findById(message._id)
         .populate('senderId', 'name dp');
 
-      // Send via Ably for real-time
+      // Publish via Ably for real-time
       const channel = ably.channels.get(`chat-${conversationId}`);
       channel.publish('message', {
         _id: message._id,
@@ -115,5 +115,7 @@ export default async function handler(req, res) {
     } catch (error) {
       res.status(500).json({ success: false, error: error.message });
     }
+  } else {
+    res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 }
